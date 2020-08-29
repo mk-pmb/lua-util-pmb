@@ -1,0 +1,22 @@
+{ "name": "lua-util-pmb",
+  "version": "0.0.1",
+  "description": "Utilities for working with the Lua programming language",
+  "keywords": [],
+
+  "author": "M.K. (https://github.com/mk-pmb)",
+  "homepage": "https://github.com/mk-pmb/lua-util-pmb/#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mk-pmb/lua-util-pmb.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mk-pmb/lua-util-pmb/issues"
+  },
+  "contributors": [],
+
+  "private": true, "license": "ISC",
+
+
+
+  "npm vs. BOM = Unexpected token": "-*- coding: UTF-8 -*-"
+}
