@@ -57,14 +57,22 @@ function find_globals () {
     source -- "$ITEM" || return $?
   done
 
+  local FILES_TODO=()
   local FILES_CHECKED=0
   local FILES_WITH_GLOBALS=()
-  for ITEM in "$@"; do
+  while [ "$#" -ge 1 ]; do
+    ITEM="$1"; shift
     case "$ITEM" in
       --allow-stray-globals ) CFG[expect_no_globals]=;;
+      --scan ) scan_files || return $?;;
+      -- ) FILES_TODO+=( "$@" ); break;;
       -* ) echo "E: unsupported option: $ITEM" >&2; return 2;;
-      * ) check_one_file "$ITEM" || return $?;;
+      * ) FILES_TODO+=( "$ITEM" );;
     esac
+  done
+
+  for ITEM in "${FILES_TODO[@]}"; do
+    check_one_file "$ITEM" || return $?
   done
 
   sleep 0.2s
@@ -113,6 +121,14 @@ function check_one_file () {
   done > >(sort --version-sort | cut -f 2-)
   wait
   [ -z "$HAD_ANY" ] || FILES_WITH_GLOBALS+=( "$SRC" )
+}
+
+
+function scan_files () {
+  local ADD=()
+  readarray -t ADD < <(
+    find -type f -name '*.lua' | sort --unique --version-sort)
+  [ -z "${ADD[0]}" ] || FILES_TODO+=( "${ADD[@]}" )
 }
 
 
