@@ -10,7 +10,7 @@ function find_globals () {
 
   local -A CFG=(
     [expect_no_globals]=+
-    [ignored_globals]='
+    [ignored_globals]="$LUA_IGNORED_GLOBALS"'
       _G
       _VERSION
       assert
