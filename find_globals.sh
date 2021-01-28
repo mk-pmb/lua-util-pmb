@@ -50,14 +50,23 @@ function find_globals () {
       xpcall
       '
     )
-  local XDG_CFG="${XDG_CONFIG_DIR:-$HOME/.config}"
+  local REPO_TOP="$(git rev-parse --show-toplevel 2>/dev/null)"
+  [ -n "$REPO_TOP" ] && REPO_TOP+='/.'
+  local FILES_TODO=(
+    /etc
+    "${XDG_CONFIG_DIR:-$HOME/.config}"
+    "$REPO_TOP"
+    .
+    )
   local ITEM=
-  for ITEM in {/etc/,"$XDG_CFG/",.}lua/"$FUNCNAME".rc; do
+  for ITEM in "${FILES_TODO[@]}"; do
+    [ -n "$ITEM" ] || continue
+    ITEM+="lua/$FUNCNAME.rc"
     [ -f "$ITEM" ] || continue
     source -- "$ITEM" || return $?
   done
 
-  local FILES_TODO=()
+  FILES_TODO=()
   local FILES_CHECKED=0
   local FILES_WITH_GLOBALS=()
   while [ "$#" -ge 1 ]; do
