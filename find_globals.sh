@@ -62,8 +62,10 @@ function find_globals () {
   for ITEM in "${FILES_TODO[@]}"; do
     [ -n "$ITEM" ] || continue
     ITEM+="lua/$FUNCNAME.rc"
-    [ -f "$ITEM" ] || continue
-    source -- "$ITEM" || return $?
+    for ITEM in "$ITEM" "$ITEM".d/*.rc; do
+      [ -f "$ITEM" ] || continue
+      source -- "$ITEM" || return $?
+    done
   done
 
   FILES_TODO=()
