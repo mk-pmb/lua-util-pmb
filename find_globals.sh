@@ -69,8 +69,11 @@ function check_one_file () {
   local SRC="$1"
   local IGN="${CFG[ignored_globals]}"
   IGN=" ${IGN//[$'\n\t']/ } "
+  local REPORT=
+  REPORT="$(luac -l -l -p -- "$SRC")" || return $?$(
+    echo "E: luac failed to parse $SRC" >&2)
   local FOUND=()
-  readarray -t FOUND < <(luac -l -l -p -- "$SRC" | sed -nrf <(echo '
+  readarray -t FOUND < <(<<<"$REPORT" sed -nrf <(echo '
     s~^\t[0-9]+\t\[([0-9]+)\]\t([GS]ETTABUP)\s+[0-9 -]+\s*; _ENV "(\S+|$\
       )".*$~\3 \1~p
     ') | sort --version-sort)
