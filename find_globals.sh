@@ -9,6 +9,7 @@ function find_globals () {
   export LANG{,UAGE}=en_US.UTF-8  # make error messages search engine-friendly
 
   local -A CFG=(
+    [expect_no_globals]=+
     [ignored_globals]='
       _G
       _VERSION
@@ -56,16 +57,31 @@ function find_globals () {
     source -- "$ITEM" || return $?
   done
 
+  local FILES_CHECKED=0
+  local FILES_WITH_GLOBALS=()
   for ITEM in "$@"; do
     case "$ITEM" in
+      --allow-stray-globals ) CFG[expect_no_globals]=;;
       -* ) echo "E: unsupported option: $ITEM" >&2; return 2;;
       * ) check_one_file "$ITEM" || return $?;;
     esac
   done
+
+  sleep 0.2s
+  if [ -n "${CFG[expect_no_globals]}" ]; then
+    ITEM="${#FILES_WITH_GLOBALS[@]}"
+    if [ "$ITEM" == 0 ]; then
+      echo "I: Good: None of $FILES_CHECKED files used implicit globals."
+    else
+      echo "E: Found globals in $ITEM files: ${FILES_WITH_GLOBALS[*]}" >&2
+      return 4
+    fi
+  fi
 }
 
 
 function check_one_file () {
+  (( FILES_CHECKED += 1 ))
   local SRC="$1"
   local IGN="${CFG[ignored_globals]}"
   IGN=" ${IGN//[$'\n\t']/ } "
@@ -77,19 +93,26 @@ function check_one_file () {
     s~^\t[0-9]+\t\[([0-9]+)\]\t([GS]ETTABUP)\s+[0-9 -]+\s*; _ENV "(\S+|$\
       )".*$~\3 \1~p
     ') | sort --version-sort)
-  local KEY= LN= PREV= ACCUM=
+  REPORT=
+  local KEY= LN= PREV= ACCUM= HAD_ANY=
   for LN in "${FOUND[@]}" ''; do
     KEY="${LN% *}"
     LN="${LN##* }"
     if [ "$KEY" == "$PREV" ]; then
       ACCUM+=",$LN"
     else
-      [ -z "$PREV" ] || [[ "$IGN" == *" $PREV "* ]] \
-        || echo "${ACCUM##,*}"$'\t'"$SRC"$'\t'"$PREV"$'\t'"$ACCUM"
-      ACCUM="$LN"
+      if [ -z "$PREV" ] || [[ "$IGN" == *" $PREV "* ]]; then
+        true  # no-op
+      else
+        echo "${ACCUM##,*}"$'\t'"$SRC"$'\t'"$PREV"$'\t'"$ACCUM"
+        HAD_ANY=+
+      fi
+      [ -z "$LN" ] || ACCUM="$LN"
       PREV="$KEY"
     fi
-  done | sort --version-sort | cut -f 2-
+  done > >(sort --version-sort | cut -f 2-)
+  wait
+  [ -z "$HAD_ANY" ] || FILES_WITH_GLOBALS+=( "$SRC" )
 }
 
 
