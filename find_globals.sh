@@ -8,6 +8,7 @@
 function find_globals () {
   export LANG{,UAGE}=en_US.UTF-8  # make error messages search engine-friendly
 
+  local LFG='lua-find-globals'
   local -A CFG=(
     [expect_no_globals]=+
     [ignored_globals]="$LUA_IGNORED_GLOBALS"'
@@ -74,9 +75,10 @@ function find_globals () {
   while [ "$#" -ge 1 ]; do
     ITEM="$1"; shift
     case "$ITEM" in
+      -- ) FILES_TODO+=( "$@" ); break;;
       --allow-stray-globals ) CFG[expect_no_globals]=;;
       --scan ) scan_files || return $?;;
-      -- ) FILES_TODO+=( "$@" ); break;;
+      --debug-func ) "$@"; return $?;;
       -* ) echo "E: unsupported option: $ITEM" >&2; return 2;;
       * ) FILES_TODO+=( "$ITEM" );;
     esac
@@ -99,11 +101,30 @@ function find_globals () {
 }
 
 
+function scan_ignores_in_file () {
+  sed -nrf <(echo '
+    : merge_lines
+    $!{/-{2}\[{2}/{/\]{2}/!{N;b merge_lines}}}
+    s~\s+$~~
+    s~\s+~ ~g
+    s~^ ?--(-|\[| )*'"$LFG"':ignore:~\n~
+    /^\n/{
+      s~^.*\[{2}~~
+      s~\]{2}.*$~~
+      p
+    }
+    ') -- "$@" | grep -oPe '\S+'
+}
+
+
 function check_one_file () {
   (( FILES_CHECKED += 1 ))
   local SRC="$1"
-  local IGN="${CFG[ignored_globals]}"
-  IGN=" ${IGN//[$'\n\t']/ } "
+  local IGN="$(scan_ignores_in_file "$SRC")"
+  IGN=" ${IGN//$'\n'/ } "
+  [[ "$IGN" == *' * '* ]] && return 0
+  IGN+=" ${CFG[ignored_globals]}"
+  IGN=" ${IGN//[$'\r\n\t ']/ } "
   local REPORT=
   REPORT="$(luac -l -l -p -- "$SRC")" || return $?$(
     echo "E: luac failed to parse $SRC" >&2)
