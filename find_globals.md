@@ -119,6 +119,27 @@ To ignore variables `foo`, `bar`, and `qux` for all files in your git repo:
 
 
 
+First aid
+---------
+
+#### aka "Help, I have too many intentional globals!"
+
+No problem. Here's a nifty trick. Assume your old code is:
+
+```lua
+coolModule = { coolNumber = 42, coolFunc = letsHopeThisExists.someFunc }
+```
+
+You could transform it to detect missing modules early:
+
+```lua
+local function _g(k) return _G[k] or error('Missing global: ' .. k) end
+local coolModule = {
+  coolNumber = 42,
+  coolFunc = _g('letsHopeThisExists').someFunc,
+}
+_G.coolModule = coolModule
+```
 
 
 
